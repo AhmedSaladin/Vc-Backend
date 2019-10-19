@@ -9,8 +9,9 @@ const eventRoute = require('./routes/event');
 const postRoute = require('./routes/post');
 const commentRoute = require('./routes/comment');
 
-//setup
+//setup morgan
 app.use(morgan('dev'));
+//setup json
 app.use(express.json());
 
 // disable cross orgigin resource sharing

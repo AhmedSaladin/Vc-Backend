@@ -4,7 +4,8 @@ const User = require('../models/user');
 
 //sign up
 exports.User_SignUp = (req, res, next) => {
-  User.findOne({ email: req.body.email }).then(email => {
+  const email = req.body.email;
+  User.findOne({ email: email }).then(email => {
     if (email) {
       res.status(509).json({ message: 'email is exist' });
     } else {
@@ -46,17 +47,18 @@ exports.User_Login = (req, res, next) => {
           if (result) {
             const token = jwt.sign(
               {
-                userId: user._id
+                userId: user._id.toString() // adding user id into token to use it in requests
               },
               'secretasshit',
               {
                 expiresIn: '1d'
               }
             );
+
             return res.status(200).json({
               message: 'Auth successful',
               token: token,
-              ID: user._id
+              ID: user._id.toString()
             });
           }
           return res.status(401).json({ message: 'Auth Failed' });
@@ -71,11 +73,14 @@ exports.User_Login = (req, res, next) => {
 
 //adding image to user
 exports.avatar = (req, res, next) => {
-  const userId = req.body.id;
-  User.findOneAndUpdate({ _id: userId }, { avatar: req.body.image }).exec();
-  User.findOne({ _id: userId })
-    .then(result => {
-      console.log(result);
+  const userId = req.userId;
+  const newImage = req.body.image;
+  User.findById(userId)
+    .then(user => {
+      user.avatar = newImage;
+      user.save();
+    })
+    .then(() => {
       res.status(200).json({ message: 'photo is added' });
     })
     .catch(err => {
@@ -86,11 +91,15 @@ exports.avatar = (req, res, next) => {
 
 //user upadting name
 exports.User_Updating_name = (req, res, next) => {
-  const userId = req.body.id;
-  User.findOneAndUpdate({ _id: userId }, { name: req.body.name }).exec();
-  User.findOne({ _id: userId })
-    .then(doc => {
-      console.log(doc);
+  const userId = req.userId;
+  const newName = req.body.name;
+  User.findById(userId)
+    .then(user => {
+      console.log(user);
+      user.name = newName;
+      user.save();
+    })
+    .then(() => {
       res.status(200).json({ message: 'name changed successfully' });
     })
     .catch(err => {
@@ -101,20 +110,17 @@ exports.User_Updating_name = (req, res, next) => {
 
 //user updating password
 exports.User_Updating_password = (req, res, next) => {
-  const userId = req.body.id;
+  const userId = req.userId;
   bcrypt.hash(req.body.password, 10, (err, hash) => {
     if (err) {
       return res.status(500).json({ error: err });
     } else {
       User.findOneAndUpdate({ _id: userId }, { password: hash })
         .exec()
-        .then(result => {
-          User.findOne({ _id: userId });
-          console.log(result);
+        .then(() => {
           res.status(200).json({ message: 'password changed' });
         })
         .catch(err => {
-          console.log(err);
           res.status(500).json({ error: err });
         });
     }
@@ -123,12 +129,9 @@ exports.User_Updating_password = (req, res, next) => {
 
 //user profile
 exports.User_profile = (req, res, next) => {
-  const id = req.query.id;
+  const id = req.userId;
   User.findOne({ _id: id })
-    .populate('post', 'content likes comment')
-    .populate('event', 'name location date')
     .then(result => {
-      console.log(typeof result);
       res.status(200).json({
         name: result.name,
         avatar: result.avatar,
@@ -140,8 +143,6 @@ exports.User_profile = (req, res, next) => {
       });
     })
     .catch(err => {
-      console.log(err);
-      console.log(id);
       res.status(500).json({ error: err });
     });
 };
@@ -150,30 +151,22 @@ exports.User_profile = (req, res, next) => {
 exports.following = (req, res, next) => {
   const userId = req.query.id;
   User.findOne({ _id: userId })
-    .populate('following', 'name ')
-    .exec()
     .then(result => {
-      console.log(result);
       res.status(200).json({ result: result.following });
     })
     .catch(err => {
-      console.log(err);
       res.status(500).json({ error: err });
     });
 };
 
-//get followed list
+//get followers list
 exports.followers = (req, res, next) => {
   const userId = req.query.id;
   User.findOne({ _id: userId })
-    .populate('followers', 'name')
-    .exec()
     .then(result => {
-      console.log(result);
       res.status(200).json({ result: result.followers });
     })
     .catch(err => {
-      console.log(err);
       res.status(500).json({ error: err });
     });
 };
@@ -225,22 +218,6 @@ exports.User_unfollow = (req, res, next) => {
     .catch(err => {
       console.log(err);
       res.status(500).json({ error: err });
-    });
-};
-
-//simple  search section
-exports.Search = (req, res, next) => {
-  const name = req.body.name;
-  User.findOne({ name: name })
-    .then(result => {
-      if (result !== null) {
-        res.status(200).json({ result });
-      } else {
-        res.status(404).json({ message: 'Not Found' });
-      }
-    })
-    .catch(err => {
-      res.status(500).json({ Error: err });
     });
 };
 
